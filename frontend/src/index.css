@@ -1,0 +1,221 @@
+@import 'tailwindcss';
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #09090b;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: #fafafa;
+}
+
+* {
+  scrollbar-color: #27272a transparent;
+  scrollbar-width: thin;
+}
+
+.preview-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* The application uses a compact set of dark utility colors. These scoped
+   overrides keep the same layout while providing a readable light workspace. */
+.theme-light {
+  color: #18181b;
+}
+
+.theme-light .bg-\[\#09090b\],
+.theme-light .bg-\[\#0c0c0f\],
+.theme-light .bg-\[\#0a0a0c\] {
+  background-color: #f4f4f5;
+}
+
+.theme-light .bg-\[\#0d0d10\],
+.theme-light .bg-\[\#0e0e11\],
+.theme-light .bg-\[\#111114\],
+.theme-light .bg-\[\#151519\] {
+  background-color: #ffffff;
+}
+
+.theme-light .bg-black\/15,
+.theme-light .bg-black\/20 {
+  background-color: #f4f4f5;
+}
+
+.theme-light .border-white\/5,
+.theme-light .border-white\/8,
+.theme-light .border-white\/10 {
+  border-color: #e4e4e7;
+}
+
+.theme-light .text-zinc-100,
+.theme-light .text-zinc-200,
+.theme-light .text-zinc-300 {
+  color: #27272a;
+}
+
+.theme-light .text-zinc-400 {
+  color: #52525b;
+}
+
+.theme-light .text-zinc-500,
+.theme-light .text-zinc-600 {
+  color: #71717a;
+}
+
+.theme-light .text-zinc-700,
+.theme-light .text-zinc-800 {
+  color: #a1a1aa;
+}
+
+.theme-light .bg-white\/\[0\.025\],
+.theme-light .bg-white\/\[0\.035\],
+.theme-light .bg-white\/\[0\.02\],
+.theme-light .bg-white\/\[0\.03\] {
+  background-color: #fafafa;
+}
+
+.theme-light .placeholder\:text-zinc-700::placeholder {
+  color: #a1a1aa;
+}
+
+.theme-light .preview-grid {
+  background-image:
+    linear-gradient(rgba(24, 24, 27, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 24, 27, 0.045) 1px, transparent 1px);
+}
+
+.theme-light .shadow-black\/10,
+.theme-light .shadow-black\/30 {
+  --tw-shadow-color: rgba(24, 24, 27, 0.08);
+}
+
+/* SKY AI brand palette: deep navy surfaces with sky and cyan interaction cues. */
+.theme-dark {
+  background-color: #07111f;
+}
+
+.theme-dark .bg-\[\#09090b\],
+.theme-dark .bg-\[\#0c0c0f\],
+.theme-dark .bg-\[\#0a0a0c\] {
+  background-color: #07111f;
+}
+
+.theme-dark .bg-\[\#0d0d10\],
+.theme-dark .bg-\[\#0e0e11\],
+.theme-dark .bg-\[\#111114\],
+.theme-dark .bg-\[\#151519\] {
+  background-color: #0b1b30;
+}
+
+.theme-dark .border-white\/5,
+.theme-dark .border-white\/8,
+.theme-dark .border-white\/10 {
+  border-color: rgba(125, 211, 252, 0.15);
+}
+
+.theme-dark .bg-white\/\[0\.025\],
+.theme-dark .bg-white\/\[0\.035\],
+.theme-dark .bg-white\/\[0\.02\],
+.theme-dark .bg-white\/\[0\.03\] {
+  background-color: rgba(125, 211, 252, 0.06);
+}
+
+.theme-dark .bg-black\/15,
+.theme-dark .bg-black\/20 {
+  background-color: rgba(2, 8, 23, 0.42);
+}
+
+.theme-dark .text-violet-200,
+.theme-light .text-violet-200 {
+  color: #0c4a6e;
+}
+
+.theme-dark .text-violet-300,
+.theme-light .text-violet-300 {
+  color: #0284c7;
+}
+
+.theme-dark .text-violet-400,
+.theme-light .text-violet-400 {
+  color: #0ea5e9;
+}
+
+.theme-dark .border-violet-400\/15,
+.theme-dark .border-violet-400\/20,
+.theme-dark .border-violet-400\/25,
+.theme-light .border-violet-400\/15,
+.theme-light .border-violet-400\/20,
+.theme-light .border-violet-400\/25 {
+  border-color: rgba(14, 165, 233, 0.32);
+}
+
+.theme-dark .bg-violet-500\/\[0\.07\],
+.theme-dark .bg-violet-500\/\[0\.06\],
+.theme-dark .bg-violet-500\/\[0\.04\],
+.theme-dark .bg-violet-500\/10,
+.theme-dark .bg-violet-500\/12,
+.theme-light .bg-violet-500\/\[0\.07\],
+.theme-light .bg-violet-500\/\[0\.06\],
+.theme-light .bg-violet-500\/\[0\.04\],
+.theme-light .bg-violet-500\/10,
+.theme-light .bg-violet-500\/12 {
+  background-color: rgba(14, 165, 233, 0.1);
+}
+
+.theme-dark .bg-violet-500,
+.theme-light .bg-violet-500 {
+  background-color: #0284c7;
+}
+
+.theme-dark .hover\:bg-violet-400:hover,
+.theme-light .hover\:bg-violet-400:hover {
+  background-color: #0ea5e9;
+}
+
+.theme-dark .hover\:bg-violet-500\/15:hover,
+.theme-dark .hover\:bg-violet-500\/\[0\.12\]:hover,
+.theme-light .hover\:bg-violet-500\/15:hover,
+.theme-light .hover\:bg-violet-500\/\[0\.12\]:hover {
+  background-color: rgba(14, 165, 233, 0.16);
+}
+
+.theme-dark .focus\:border-violet-400\/25:focus,
+.theme-light .focus\:border-violet-400\/25:focus {
+  border-color: rgba(14, 165, 233, 0.6);
+}
+
+.theme-dark .preview-grid {
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.035) 1px, transparent 1px);
+}
