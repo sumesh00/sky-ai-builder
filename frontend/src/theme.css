@@ -195,3 +195,30 @@
     linear-gradient(rgba(14, 116, 144, 0.075) 1px, transparent 1px),
     linear-gradient(90deg, rgba(14, 116, 144, 0.075) 1px, transparent 1px);
 }
+
+/* Status labels need a darker green in light mode for accessible contrast. */
+.theme-light .text-emerald-200,
+.theme-light .text-emerald-300,
+.theme-light .text-emerald-400 {
+  color: #047857;
+}
+
+.theme-light .border-emerald-400\/15,
+.theme-light .border-emerald-400\/20,
+.theme-light .border-emerald-400\/25 {
+  border-color: #86efac;
+}
+
+.theme-light .bg-emerald-400\/5,
+.theme-light .bg-emerald-400\/\[0\.05\] {
+  background-color: #ecfdf5;
+}
+
+.theme-light .text-amber-200,
+.theme-light .text-amber-300 {
+  color: #a16207;
+}
+
+.theme-light .text-red-300 {
+  color: #b91c1c;
+}
