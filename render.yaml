@@ -14,7 +14,7 @@ services:
       - key: AI_PROVIDER
         value: openai
       - key: AI_REQUEST_TIMEOUT_MS
-        value: "60000"
+        value: "120000"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
