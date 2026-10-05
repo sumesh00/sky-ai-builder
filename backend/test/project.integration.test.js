@@ -37,11 +37,39 @@ const FULL_STACK_PLAN = {
   },
 }
 
+const GENERATED_APP = `import { useState } from 'react'
+
+const destinations = ['Alpine Lakes', 'Coastal Trails', 'Desert Skies']
+
+export default function App() {
+  const [selected, setSelected] = useState(destinations[0])
+  return (
+    <main>
+      <nav aria-label="Primary"><strong>Travel Anchor</strong><a href="#destinations">Destinations</a></nav>
+      <section className="hero"><p className="eyebrow">Curated journeys</p><h1>Explore farther.</h1><p>Thoughtful escapes for curious travelers.</p></section>
+      <section id="destinations"><h2>Choose your next view</h2>{destinations.map((destination) => <button key={destination} onClick={() => setSelected(destination)}>{destination}</button>)}<p aria-live="polite">Selected: {selected}</p></section>
+    </main>
+  )
+}
+`
+
+const GENERATED_CSS = `:root { color: #17332d; background: #f5f1e8; font-family: Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+main { min-height: 100vh; }
+nav { display: flex; justify-content: space-between; padding: 1.5rem clamp(1rem, 5vw, 5rem); }
+.hero { display: grid; min-height: 65vh; place-content: center; padding: 3rem; text-align: center; }
+.hero h1 { font-size: clamp(3rem, 10vw, 8rem); margin: 0; }
+#destinations { padding: 3rem clamp(1rem, 5vw, 5rem); }
+button { margin: .4rem; padding: .8rem 1rem; }
+`
+
 let apiServer
 let apiUrl
 let mockProviderServer
 let providerUrl
 let temporaryRoot
+const generationRequests = []
 
 function listen(server) {
   return new Promise((resolve) => {
@@ -98,19 +126,36 @@ before(async () => {
 
     request.on('end', () => {
       const parsedBody = JSON.parse(body)
-      const plan = parsedBody.input.includes('full-stack')
-        ? FULL_STACK_PLAN
-        : FRONTEND_PLAN
+      const formatName = parsedBody.text?.format?.name
+      let value
+
+      if (formatName === 'website_files') {
+        generationRequests.push(parsedBody)
+        value = {
+          files: [
+            { content: GENERATED_APP, path: 'frontend/src/App.jsx' },
+            { content: GENERATED_CSS, path: 'frontend/src/index.css' },
+          ],
+          summary: 'Generated a responsive travel experience.',
+        }
+      } else {
+        value = parsedBody.input.includes('full-stack')
+          ? FULL_STACK_PLAN
+          : FRONTEND_PLAN
+      }
 
       response.writeHead(200, { 'Content-Type': 'application/json' })
       response.end(
         JSON.stringify({
-          id: 'resp_project_test',
+          id:
+            formatName === 'website_files'
+              ? 'resp_website_generation_test'
+              : 'resp_project_test',
           model: 'test-model',
           output: [
             {
               content: [
-                { type: 'output_text', text: JSON.stringify(plan) },
+                { type: 'output_text', text: JSON.stringify(value) },
               ],
               type: 'message',
             },
@@ -175,6 +220,12 @@ test('creates a portable frontend-only project from an approved plan', async () 
   assert.equal(result.body.data.type, 'frontend')
   assert.equal(result.body.data.originatingPlan.id, plan.planId)
   assert.equal(result.body.data.originatingPlan.version, 1)
+  assert.deepEqual(result.body.data.websiteGeneration, {
+    model: 'test-model',
+    provider: 'openai',
+    responseId: 'resp_website_generation_test',
+    summary: 'Generated a responsive travel experience.',
+  })
 
   const listing = await post('/api/workspace/tools/list-files', {
     depth: 5,
@@ -188,6 +239,23 @@ test('creates a portable frontend-only project from an approved plan', async () 
   assert.equal(paths.includes('frontend/package.json'), true)
   assert.equal(paths.some((filePath) => filePath.startsWith('backend/')), false)
   assert.equal(paths.some((filePath) => filePath.startsWith('.ai-builder')), false)
+  const appFile = await post('/api/workspace/tools/read-file', {
+    path: 'frontend/src/App.jsx',
+    projectId: 'travel-anchor',
+  })
+  const cssFile = await post('/api/workspace/tools/read-file', {
+    path: 'frontend/src/index.css',
+    projectId: 'travel-anchor',
+  })
+
+  assert.equal(appFile.response.status, 200)
+  assert.equal(appFile.body.data.content, GENERATED_APP)
+  assert.equal(appFile.body.data.content.includes('Generated project foundation'), false)
+  assert.equal(cssFile.response.status, 200)
+  assert.equal(cssFile.body.data.content, GENERATED_CSS)
+  assert.equal(generationRequests.length, 1)
+  assert.deepEqual(JSON.parse(generationRequests[0].input).approvedPlan, FRONTEND_PLAN)
+  assert.equal(generationRequests[0].text.format.name, 'website_files')
   await assert.rejects(fs.access(path.join(temporaryRoot, 'travel-anchor', 'node_modules')))
 })
 

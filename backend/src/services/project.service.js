@@ -7,6 +7,7 @@ const {
 } = require('../projects/projectValidation')
 const { createWorkspaceService } = require('./workspace.service')
 const { versionService } = require('./version.service')
+const { WebsiteGenerationService } = require('./websiteGeneration.service')
 
 const METADATA_DIRECTORY = '.ai-builder'
 const METADATA_FILENAME = 'project.json'
@@ -36,8 +37,13 @@ function parseMetadata(file) {
 }
 
 class ProjectService {
-  constructor({ plans = planStore, workspace = createWorkspaceService() } = {}) {
+  constructor({
+    plans = planStore,
+    websiteGeneration = new WebsiteGenerationService(),
+    workspace = createWorkspaceService(),
+  } = {}) {
     this.plans = plans
+    this.websiteGeneration = websiteGeneration
     this.workspace = workspace
   }
 
@@ -118,6 +124,10 @@ class ProjectService {
       )
     }
 
+    const generatedWebsite = await this.websiteGeneration.generate({
+      approvedPlan,
+      name: safeName,
+    })
     const timestamp = new Date().toISOString()
     const metadata = {
       createdAt: timestamp,
@@ -139,13 +149,25 @@ class ProjectService {
       schemaVersion: 1,
       type,
       updatedAt: timestamp,
+      websiteGeneration: {
+        model: generatedWebsite.model,
+        provider: generatedWebsite.provider,
+        responseId: generatedWebsite.responseId,
+        summary: generatedWebsite.summary,
+      },
     }
+    const generatedFiles = new Map(
+      generatedWebsite.files.map((file) => [file.path, file.content]),
+    )
     const files = buildProjectFiles({
       name: safeName,
       plan: approvedPlan.plan,
       projectId,
       type,
-    })
+    }).map((file) => ({
+      ...file,
+      content: generatedFiles.get(file.path) ?? file.content,
+    }))
 
     for (const file of files) {
       await this.workspace.writeFile(`${projectId}/${file.path}`, file.content)
