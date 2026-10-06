@@ -1,5 +1,9 @@
 const AppError = require('../utils/AppError')
 const { parseFigmaUrl } = require('./figmaUrl')
+const {
+  buildDesignSpecification,
+  collectImageReferences,
+} = require('./designSpecification')
 
 const FIGMA_API_URL = 'https://api.figma.com/v1'
 const MAX_NODES = 500
@@ -62,6 +66,30 @@ class FigmaClient {
     return Boolean(this.accessToken)
   }
 
+  async fetchImageUrls(fileKey, imageRefs, signal) {
+    if (imageRefs.size === 0) return {}
+
+    const response = await this.fetch(`${FIGMA_API_URL}/files/${fileKey}/images`, {
+      headers: { 'X-Figma-Token': this.accessToken },
+      signal,
+    })
+    const body = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      throw new AppError(
+        body.err || 'Figma could not read design images',
+        response.status === 401 || response.status === 403 ? 403 : 502,
+        response.status === 401 || response.status === 403
+          ? 'FIGMA_ACCESS_DENIED'
+          : 'FIGMA_REQUEST_FAILED',
+      )
+    }
+
+    return body.meta?.images && typeof body.meta.images === 'object'
+      ? body.meta.images
+      : {}
+  }
+
   async inspect(url) {
     if (!this.isConfigured()) {
       throw new AppError(
@@ -83,8 +111,6 @@ class FigmaClient {
       )
       if (reference.nodeId) {
         endpoint.searchParams.set('ids', reference.nodeId)
-      } else {
-        endpoint.searchParams.set('depth', '4')
       }
 
       const response = await this.fetch(endpoint, {
@@ -108,9 +134,25 @@ class FigmaClient {
         throw new AppError('The requested Figma design node was not found', 404, 'FIGMA_NODE_NOT_FOUND')
       }
 
+      const imageRefs = collectImageReferences(root)
+      const imageUrls = await this.fetchImageUrls(
+        reference.fileKey,
+        imageRefs,
+        controller.signal,
+      )
+      const designName =
+        typeof body.name === 'string' ? body.name.slice(0, 160) : 'Untitled Figma design'
+
       return {
         ...reference,
-        designName: typeof body.name === 'string' ? body.name.slice(0, 160) : 'Untitled Figma design',
+        designName,
+        designSpecification: buildDesignSpecification({
+          designName,
+          fileKey: reference.fileKey,
+          imageUrls,
+          nodeId: reference.nodeId,
+          root,
+        }),
         summary: summarizeDocument(root),
       }
     } catch (error) {

@@ -17,6 +17,33 @@ export default function App() {
 }
 `
 const CSS_SOURCE = ':root { color: #172554; }\nmain { min-height: 100vh; }\n'
+const FIGMA_APP_SOURCE = `import { useEffect, useRef, useState } from 'react'
+
+export default function App() {
+  const bannerRef = useRef(null)
+  const hasPlayedRef = useRef(false)
+  const videoRef = useRef(null)
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    const updateBanner = () => {
+      const banner = bannerRef.current
+      if (!banner) return
+      const nextProgress = Math.max(0, Math.min(1, (window.innerHeight - banner.getBoundingClientRect().top) / window.innerHeight))
+      setProgress(nextProgress)
+      if (nextProgress >= 1 && !hasPlayedRef.current) {
+        hasPlayedRef.current = true
+        videoRef.current?.play().catch(() => {})
+      }
+    }
+    updateBanner()
+    window.addEventListener('scroll', updateBanner, { passive: true })
+    return () => window.removeEventListener('scroll', updateBanner)
+  }, [])
+
+  return <section data-figma-scroll-banner ref={bannerRef} style={{ '--progress': progress }}><div>Travel</div><video muted playsInline ref={videoRef} /></section>
+}
+`
 
 function generatedValue(overrides = {}) {
   return {
@@ -72,9 +99,57 @@ test('generates the two frontend files from the approved plan with a mocked prov
       requirements: ['Responsive navigation'],
       summary: 'Create a travel site',
     },
+    designSpecification: null,
     originalRequest: 'Build a polished travel site',
     project: { name: 'Travel Anchor', type: 'frontend' },
   })
+})
+
+test('passes a Figma design specification to generation and requires the scroll banner interaction', async () => {
+  const requests = []
+  const service = new WebsiteGenerationService({
+    providerFactory: () => ({
+      async generateStructured(request) {
+        requests.push(request)
+        return {
+          model: 'mock-model',
+          provider: 'mock-openai',
+          responseId: 'resp_figma',
+          value: generatedValue({
+            files: [
+              { content: FIGMA_APP_SOURCE, path: 'frontend/src/App.jsx' },
+              { content: CSS_SOURCE, path: 'frontend/src/index.css' },
+            ],
+          }),
+        }
+      },
+    }),
+  })
+  const designSpecification = {
+    colors: ['#0f1f2e'],
+    hierarchy: { name: 'Landing page', type: 'FRAME' },
+    version: 1,
+  }
+
+  await service.generate({
+    approvedPlan: {
+      designReference: { designSpecification },
+      plan: { projectType: 'frontend', requirements: [], summary: 'Figma site' },
+      request: 'Recreate the Figma travel frame',
+    },
+    name: 'Figma Travel',
+  })
+
+  assert.deepEqual(JSON.parse(requests[0].input).designSpecification, designSpecification)
+  assert.equal(requests[0].instructions.includes('A non-null designSpecification is a Figma source of truth'), true)
+  assert.equal(requests[0].instructions.includes('video.play() only after that final scroll position'), true)
+})
+
+test('rejects a Figma generation response without the required scroll banner interaction', () => {
+  assert.throws(
+    () => validateWebsiteGeneration(generatedValue(), { requireFigmaScrollBanner: true }),
+    (error) => error.code === 'AI_WEBSITE_GENERATION_INVALID',
+  )
 })
 
 test('accepts files in either order and normalizes them to the fixed target order', () => {

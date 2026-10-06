@@ -20,4 +20,15 @@ Rules:
 - Do not create lockfiles or claim that commands, builds, or tests ran.
 - Return at least one operation and no more than 12.`
 
-module.exports = { EDIT_GENERATION_INSTRUCTIONS, FILE_SELECTION_INSTRUCTIONS }
+const FIGMA_DESIGN_EDIT_INSTRUCTIONS = `A designSpecification from Figma is included for this project.
+
+Rules:
+- Treat it as the visual source of truth: update the supplied React and CSS source files to reproduce its hierarchy, section order, measurements, typography, colors, spacing, layout, and image-fill placement.
+- Use replace operations only. Never create DESIGN_ALIGNMENT.md, Markdown notes, documentation, or any non-source file.
+- Keep or implement the scroll banner interaction: left content shrinks, right video panel expands, and video.play() is called only when the final scroll position is reached.`
+
+module.exports = {
+  EDIT_GENERATION_INSTRUCTIONS,
+  FIGMA_DESIGN_EDIT_INSTRUCTIONS,
+  FILE_SELECTION_INSTRUCTIONS,
+}

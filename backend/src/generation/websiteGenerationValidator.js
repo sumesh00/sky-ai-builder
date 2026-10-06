@@ -66,7 +66,23 @@ function validateContent(path, content) {
   return content
 }
 
-function validateWebsiteGeneration(result) {
+function validateScrollBanner(appSource) {
+  const requiredPatterns = [
+    /data-figma-scroll-banner/,
+    /<video\b/,
+    /\buseEffect\b/,
+    /\buseRef\b/,
+    /\.play\s*\(/,
+  ]
+
+  if (requiredPatterns.some((pattern) => !pattern.test(appSource))) {
+    invalidGeneration(
+      'Generated App.jsx must implement the required Figma scroll banner interaction',
+    )
+  }
+}
+
+function validateWebsiteGeneration(result, { requireFigmaScrollBanner = false } = {}) {
   if (
     !isPlainObject(result) ||
     Object.keys(result).some((key) => !['files', 'summary'].includes(key)) ||
@@ -97,6 +113,10 @@ function validateWebsiteGeneration(result) {
     invalidGeneration()
   }
 
+  if (requireFigmaScrollBanner) {
+    validateScrollBanner(files.get('frontend/src/App.jsx'))
+  }
+
   return {
     files: GENERATED_PATHS.map((path) => ({ content: files.get(path), path })),
     summary: result.summary.trim(),
@@ -106,5 +126,6 @@ function validateWebsiteGeneration(result) {
 module.exports = {
   GENERATED_PATHS,
   MAX_GENERATED_FILE_BYTES,
+  validateScrollBanner,
   validateWebsiteGeneration,
 }

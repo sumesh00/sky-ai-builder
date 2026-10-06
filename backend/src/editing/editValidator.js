@@ -63,6 +63,10 @@ function validateEditPath(value) {
   return value
 }
 
+function isDesignSourceFile(path) {
+  return /^frontend\/src\/.+\.(?:css|jsx?)$/.test(path)
+}
+
 function validateFileSelection(selection, manifestPaths) {
   if (
     !isPlainObject(selection) ||
@@ -120,6 +124,7 @@ function validateEditOperations(
   inspectedPaths,
   manifestPaths,
   knownPaths = manifestPaths,
+  { designSourceOnly = false } = {},
 ) {
   if (
     !isPlainObject(result) ||
@@ -157,6 +162,10 @@ function validateEditOperations(
 
     const path = validateEditPath(operation.path)
 
+    if (designSourceOnly && (operation.type !== 'replace' || !isDesignSourceFile(path))) {
+      invalidOperations('Figma design edits may only replace frontend source files')
+    }
+
     if (operation.type === 'create') {
       if (
         knownPaths.has(path) ||
@@ -189,4 +198,5 @@ module.exports = {
   validateEditOperations,
   validateEditPath,
   validateFileSelection,
+  isDesignSourceFile,
 }

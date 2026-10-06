@@ -11,7 +11,7 @@ Rules:
 - Put unresolved decisions that materially affect implementation in questions.
 - Use sequential step IDs such as step-1, step-2, and step-3.
 - Every step must have status "pending".
-- When a Figma design summary is supplied, treat it as reference material: reflect its visible structure in requirements and steps, but do not claim pixel-perfect fidelity or invent details that are absent from the summary.
+- When a Figma design specification is supplied, treat its hierarchy, text, measurements, layout, spacing, colors, typography, and image-fill placement as implementation requirements. Preserve the supplied section order and call out the required scroll-banner interaction in the plan; do not create Markdown design notes.
 - Keep the plan understandable to a developer who is learning the system.`
 
 module.exports = { PLANNING_INSTRUCTIONS }

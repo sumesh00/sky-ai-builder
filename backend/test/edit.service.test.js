@@ -6,13 +6,20 @@ const {
 } = require('../src/processes/projectProcessRegistry')
 const { EditService } = require('../src/services/edit.service')
 
-function createProjectService() {
+function createProjectService(designSpecification = null) {
   const touches = []
 
   return {
     touches,
     async getProject(projectId) {
-      return { id: projectId, name: 'Travel Site', type: 'frontend' }
+      return {
+        id: projectId,
+        name: 'Travel Site',
+        originatingPlan: designSpecification
+          ? { designReference: { designSpecification } }
+          : undefined,
+        type: 'frontend',
+      }
     },
     async touchProject(projectId) {
       touches.push(projectId)
@@ -145,6 +152,137 @@ test('reads targeted files and applies validated replace and create operations',
   assert.equal(projectService.touches.length, 1)
   assert.equal(requests[1].input.includes('Old title'), true)
   assert.equal(requests[1].input.includes('DO_NOT_SEND_THIS_FILE'), false)
+})
+
+test('uses a stored Figma specification to update source code without creating design documentation', async () => {
+  const designSpecification = {
+    colors: ['#0f1f2e'],
+    hierarchy: { name: 'Landing page', type: 'FRAME' },
+    typography: [{ fontFamily: 'Inter', fontSize: 72 }],
+    version: 1,
+  }
+  const requests = []
+  const workspace = createWorkspace()
+  const provider = createProvider(
+    [
+      {
+        paths: ['frontend/src/App.jsx'],
+        rationale: 'The Figma hierarchy maps to the page component.',
+        searchTerms: [],
+      },
+      {
+        operations: [
+          {
+            content: '',
+            path: 'frontend/src/App.jsx',
+            replaceAll: false,
+            replacement: 'Figma aligned title',
+            search: 'Old title',
+            type: 'replace',
+          },
+        ],
+        summary: 'Updated the source component to match the Figma frame.',
+      },
+    ],
+    requests,
+  )
+  const service = new EditService({
+    processRegistry: new ProjectProcessRegistry(),
+    projectService: createProjectService(designSpecification),
+    providerFactory: () => provider,
+    workspaceFactory: async () => workspace,
+  })
+
+  const result = await service.editProject('travel-site', 'Match the supplied Figma frame')
+
+  assert.deepEqual(result.changes.map((change) => change.path), ['frontend/src/App.jsx'])
+  assert.match(workspace.files.get('frontend/src/App.jsx'), /Figma aligned title/)
+  assert.equal(workspace.files.has('DESIGN_ALIGNMENT.md'), false)
+  assert.equal(requests[0].instructions.includes('Never create DESIGN_ALIGNMENT.md'), true)
+  assert.deepEqual(JSON.parse(requests[1].input).designSpecification, designSpecification)
+})
+
+test('rejects Figma edit operations that attempt to create design documentation', async () => {
+  const workspace = createWorkspace()
+  const provider = createProvider(
+    [
+      {
+        paths: ['frontend/src/App.jsx'],
+        rationale: 'Inspect the page source.',
+        searchTerms: [],
+      },
+      {
+        operations: [
+          {
+            content: '# Alignment notes',
+            path: 'DESIGN_ALIGNMENT.md',
+            replaceAll: false,
+            replacement: '',
+            search: '',
+            type: 'create',
+          },
+        ],
+        summary: 'Created design notes.',
+      },
+    ],
+    [],
+  )
+  const service = new EditService({
+    processRegistry: new ProjectProcessRegistry(),
+    projectService: createProjectService({ hierarchy: {}, version: 1 }),
+    providerFactory: () => provider,
+    workspaceFactory: async () => workspace,
+  })
+
+  await assert.rejects(
+    service.editProject('travel-site', 'Match the Figma design'),
+    (error) => error.code === 'AI_EDIT_OPERATIONS_INVALID',
+  )
+  assert.equal(workspace.writes.length, 0)
+})
+
+test('does not include Markdown documentation in Figma edit context discovered by search', async () => {
+  const requests = []
+  const workspace = createWorkspace()
+  workspace.files.set('DESIGN_ALIGNMENT.md', 'DO_NOT_SEND_ALIGNMENT_NOTES')
+  workspace.searchCode = async () => ({
+    results: [{ path: 'DESIGN_ALIGNMENT.md' }],
+    truncated: false,
+  })
+  const provider = createProvider(
+    [
+      {
+        paths: ['frontend/src/App.jsx'],
+        rationale: 'The page component contains the banner.',
+        searchTerms: ['alignment'],
+      },
+      {
+        operations: [
+          {
+            content: '',
+            path: 'frontend/src/App.jsx',
+            replaceAll: false,
+            replacement: 'Figma source edit',
+            search: 'Old title',
+            type: 'replace',
+          },
+        ],
+        summary: 'Updated the source component.',
+      },
+    ],
+    requests,
+  )
+  const service = new EditService({
+    processRegistry: new ProjectProcessRegistry(),
+    projectService: createProjectService({ hierarchy: {}, version: 1 }),
+    providerFactory: () => provider,
+    workspaceFactory: async () => workspace,
+  })
+
+  await service.editProject('travel-site', 'Apply the Figma layout')
+
+  assert.equal(requests[1].input.includes('DO_NOT_SEND_ALIGNMENT_NOTES'), false)
+  assert.equal(workspace.files.get('DESIGN_ALIGNMENT.md'), 'DO_NOT_SEND_ALIGNMENT_NOTES')
 })
 
 test('rejects unsafe AI paths before writing any project file', async () => {

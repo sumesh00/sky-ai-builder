@@ -4,12 +4,14 @@ const {
   EDIT_OPERATIONS_SCHEMA,
 } = require('../editing/editSchemas')
 const {
+  FIGMA_DESIGN_EDIT_INSTRUCTIONS,
   EDIT_GENERATION_INSTRUCTIONS,
   FILE_SELECTION_INSTRUCTIONS,
 } = require('../editing/editPrompts')
 const {
   validateEditOperations,
   validateFileSelection,
+  isDesignSourceFile,
 } = require('../editing/editValidator')
 const {
   projectProcessRegistry,
@@ -45,16 +47,26 @@ function validateRequest(request) {
   return request.trim()
 }
 
-function buildSelectionInput(request, project, manifest) {
+function getProjectDesignSpecification(project) {
+  const specification = project?.originatingPlan?.designReference?.designSpecification
+
+  return specification && typeof specification === 'object'
+    ? specification
+    : null
+}
+
+function buildSelectionInput(request, project, manifest, designSpecification) {
   return JSON.stringify({
+    designSpecification,
     project: { id: project.id, name: project.name, type: project.type },
     projectManifest: manifest,
     userRequest: request,
   })
 }
 
-function buildEditInput(request, project, files) {
+function buildEditInput(request, project, files, designSpecification) {
   return JSON.stringify({
+    designSpecification,
     project: { id: project.id, name: project.name, type: project.type },
     projectContext: files.map((file) => ({
       content: file.content,
@@ -219,16 +231,30 @@ class EditService {
         .map((entry) => ({ path: entry.path, size: entry.size }))
       const manifestPaths = new Set(manifest.map((entry) => entry.path))
       const knownPaths = new Set(listing.entries.map((entry) => entry.path))
+      const designSpecification = getProjectDesignSpecification(project)
+      const selectableManifest = designSpecification
+        ? manifest.filter((entry) => isDesignSourceFile(entry.path))
+        : manifest
+      const selectablePaths = new Set(
+        selectableManifest.map((entry) => entry.path),
+      )
       const provider = this.providerFactory()
       const selectionResult = await provider.generateStructured({
-        input: buildSelectionInput(request, project, manifest),
-        instructions: FILE_SELECTION_INSTRUCTIONS,
+        input: buildSelectionInput(
+          request,
+          project,
+          selectableManifest,
+          designSpecification,
+        ),
+        instructions: designSpecification
+          ? `${FILE_SELECTION_INSTRUCTIONS}\n\n${FIGMA_DESIGN_EDIT_INSTRUCTIONS}`
+          : FILE_SELECTION_INSTRUCTIONS,
         name: 'project_edit_file_selection',
         schema: EDIT_FILE_SELECTION_SCHEMA,
       })
       const selection = validateFileSelection(
         selectionResult.value,
-        manifestPaths,
+        selectablePaths,
       )
       const relevantPaths = [...selection.paths]
       const relevantPathSet = new Set(relevantPaths)
@@ -241,7 +267,7 @@ class EditService {
         for (const result of search.results) {
           if (
             relevantPaths.length < MAX_CONTEXT_FILES &&
-            manifestPaths.has(result.path) &&
+            selectablePaths.has(result.path) &&
             !relevantPathSet.has(result.path)
           ) {
             relevantPathSet.add(result.path)
@@ -266,8 +292,15 @@ class EditService {
 
       const inspectedPaths = new Set(files.map((file) => file.path))
       const editResult = await provider.generateStructured({
-        input: buildEditInput(request, project, files),
-        instructions: EDIT_GENERATION_INSTRUCTIONS,
+        input: buildEditInput(
+          request,
+          project,
+          files,
+          designSpecification,
+        ),
+        instructions: designSpecification
+          ? `${EDIT_GENERATION_INSTRUCTIONS}\n\n${FIGMA_DESIGN_EDIT_INSTRUCTIONS}`
+          : EDIT_GENERATION_INSTRUCTIONS,
         name: 'project_edit_operations',
         schema: EDIT_OPERATIONS_SCHEMA,
       })
@@ -276,6 +309,7 @@ class EditService {
         inspectedPaths,
         manifestPaths,
         knownPaths,
+        { designSourceOnly: Boolean(designSpecification) },
       )
       const fileContents = new Map(files.map((file) => [file.path, file.content]))
       const simulatedChanges = simulateOperations(
@@ -327,4 +361,9 @@ class EditService {
 
 const editService = new EditService()
 
-module.exports = { EditService, editService, validateRequest }
+module.exports = {
+  EditService,
+  editService,
+  getProjectDesignSpecification,
+  validateRequest,
+}
